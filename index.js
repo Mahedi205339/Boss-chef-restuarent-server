@@ -2,6 +2,9 @@ const express = require('express')
 const app = express();
 const cors = require('cors');
 require('dotenv').config()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+console.log(process.env.STRIPE_SECRET_KEY)
 const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -22,7 +25,7 @@ const client = new MongoClient(uri, {
     }
 });
 
-console.log(process.env.DB_PASS)
+
 
 async function run() {
     try {
@@ -50,7 +53,7 @@ async function run() {
         //middlewares 
         const verifyToken = (req, res, next) => {
             try {
-                console.log('inside verify token', req.headers.authorization)
+                // console.log('inside verify token', req.headers.authorization)
                 if (!req.headers.authorization) {
                     return res.status(401).send({ message: 'Unauthorize access' })
                 }
@@ -89,14 +92,14 @@ async function run() {
             }
 
         })
-        
+
         app.get('/menu/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await menuCollection.findOne(query);
             res.send(result);
-          })
-      
+        })
+
         app.patch('/menu/:id', async (req, res) => {
             try {
                 const item = req.body;
@@ -259,6 +262,40 @@ async function run() {
                 error => console.log(error)
             }
         })
+
+        // payment intent 
+        // app.post('/create-payment-intent', async (req, res) => {
+        //     try {
+        //         const { price } = req.body;
+        //         const amount = parseInt(price * 100);
+        //         const paymentIntent = await stripe.paymentIntents.create({
+        //             amount: amount,
+        //             currency:"usd",
+        //             payment_method_types: ['card'],
+        //         })
+        //         res.send({
+        //             clientSecret:paymentIntent.client_secret
+        //         })
+        //     } catch {
+        //         error => console.log(error)
+        //     }
+        // })
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            console.log(amount, 'amount inside the intent')
+      
+            const paymentIntent = await stripe.paymentIntents.create({
+              amount: amount,
+              currency: 'usd',
+              payment_method_types: ['card']
+            });
+      
+            res.send({
+              clientSecret: paymentIntent.client_secret
+            })
+          });
+      
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
