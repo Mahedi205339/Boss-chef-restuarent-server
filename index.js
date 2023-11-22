@@ -281,7 +281,7 @@ async function run() {
         });
 
         //payment related api 
-        app.post('/payments', async (req, res) => {
+        app.post('/payments', verifyToken, verifyAdmin, async (req, res) => {
             try {
                 const payment = req.body;
                 const paymentResult = await paymentsCollection.insertOne(payment)
@@ -314,7 +314,41 @@ async function run() {
             }
         })
 
+        //states or analytics 
+        app.get('/admin-stats', async (req, res) => {
+            try {
+                const users = await usersCollection.estimatedDocumentCount();
+                const menuItems = await menuCollection.estimatedDocumentCount();
+                const orders = await paymentsCollection.estimatedDocumentCount();
+                //this is not the best way
+                // const payments =await paymentsCollection.find().toArray();
+                // const revenue =payments.reduce((total , payment)=>total +payment.price ,0)
 
+                //better way 
+                const result = await paymentsCollection.aggregate([
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: {
+                                $sum: '$price'
+                            }
+                        }
+                    }
+                ]).toArray();
+                const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+                res.send({
+                    users,
+                    menuItems,
+                    orders,
+                    revenue
+                })
+
+            }
+            catch {
+                error => console.log(error)
+            }
+        })
 
 
         // Send a ping to confirm a successful connection
