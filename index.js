@@ -190,6 +190,16 @@ async function run() {
         })
 
         //users related api
+        app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
+            try {
+                console.log(req.headers)
+                const result = await usersCollection.find().toArray();
+                res.send(result)
+            } catch {
+                error => console.log(error)
+            }
+        })
+
         app.post('/users', async (req, res) => {
             try {
                 const user = req.body;
@@ -208,15 +218,7 @@ async function run() {
 
         })
 
-        app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
-            try {
-                console.log(req.headers)
-                const result = await usersCollection.find().toArray();
-                res.send(result)
-            } catch {
-                error => console.log(error)
-            }
-        })
+      
 
         app.get('/users/admin/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
@@ -281,7 +283,7 @@ async function run() {
         });
 
         //payment related api 
-        app.post('/payments', verifyToken, verifyAdmin, async (req, res) => {
+        app.post('/payments',verifyToken,verifyToken, async (req, res) => {
             try {
                 const payment = req.body;
                 const paymentResult = await paymentsCollection.insertOne(payment)
@@ -300,7 +302,7 @@ async function run() {
             }
         })
 
-        app.get('/payments/:email', verifyToken, async (req, res) => {
+        app.get('/payments/:email', async (req, res) => {
             try {
                 const query = { email: req.params.email }
                 if (req.params.email !== req.decoded.email) {
@@ -348,6 +350,37 @@ async function run() {
             catch {
                 error => console.log(error)
             }
+        })
+
+        //using aggregate pipeline 
+        app.get('/order-stats', async (req, res) => {
+            const result = await paymentsCollection.aggregate([
+                {
+                    $unwind: '$menuItemIds'
+                },
+                {
+                    $lookup: {
+                        from: 'menu',
+                        localField: 'menuItemIds',
+                        foreignField: '_id',
+                        as: 'menuItems'
+                    },
+
+                },
+                {
+                    $unwind: '$menuItems'
+                },
+                {
+                    $group: {
+                        _id: '$menuItems.category',
+                        quantity: { $sum: 1 },
+                        revenue: { $sum: '$menuItems.price' }
+                    }
+                }
+
+
+            ]).toArray();
+            res.send(result)
         })
 
 
