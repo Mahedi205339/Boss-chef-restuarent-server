@@ -29,7 +29,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        client.connect();
+        // client.connect();
 
         const menuCollection = client.db("bossDb").collection("menu")
         const reviewsCollection = client.db("bossDb").collection("reviews")
@@ -284,6 +284,12 @@ async function run() {
 
         //payment related api 
 
+        app.get('/payments',verifyToken,verifyAdmin, async (req, res) => {
+
+            const result = await paymentsCollection.find().toArray();
+            res.send(result);
+        })
+
         app.get('/payments/:email', verifyToken, async (req, res) => {
             const query = { email: req.params.email }
             if (req.params.email !== req.decoded.email) {
@@ -292,6 +298,7 @@ async function run() {
             const result = await paymentsCollection.find(query).toArray();
             res.send(result);
         })
+
 
         app.post('/payments', verifyToken, verifyAdmin, async (req, res) => {
             try {
@@ -392,8 +399,8 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     }
     finally {
         // Ensures that the client will close when you finish/error
