@@ -218,7 +218,7 @@ async function run() {
 
         })
 
-      
+
 
         app.get('/users/admin/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
@@ -283,7 +283,17 @@ async function run() {
         });
 
         //payment related api 
-        app.post('/payments',verifyToken,verifyToken, async (req, res) => {
+
+        app.get('/payments/:email', verifyToken, async (req, res) => {
+            const query = { email: req.params.email }
+            if (req.params.email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' });
+            }
+            const result = await paymentsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post('/payments', verifyToken, verifyAdmin, async (req, res) => {
             try {
                 const payment = req.body;
                 const paymentResult = await paymentsCollection.insertOne(payment)
@@ -302,19 +312,7 @@ async function run() {
             }
         })
 
-        app.get('/payments/:email', async (req, res) => {
-            try {
-                const query = { email: req.params.email }
-                if (req.params.email !== req.decoded.email) {
-                    return res.status(403).send({ message: 'forbidden access' })
-                }
-                const result = await paymentsCollection.find(query).toArray();
-                res.send(result)
-            }
-            catch {
-                error => console.log(error)
-            }
-        })
+
 
         //states or analytics 
         app.get('/admin-stats', async (req, res) => {
@@ -353,7 +351,7 @@ async function run() {
         })
 
         //using aggregate pipeline 
-        app.get('/order-stats', async (req, res) => {
+        app.get('/order-stats', verifyToken, verifyAdmin, async (req, res) => {
             const result = await paymentsCollection.aggregate([
                 {
                     $unwind: '$menuItemIds'
@@ -375,6 +373,15 @@ async function run() {
                         _id: '$menuItems.category',
                         quantity: { $sum: 1 },
                         revenue: { $sum: '$menuItems.price' }
+                    }
+
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        category: '$_id',
+                        quantity: '$quantity',
+                        revenue: '$revenue'
                     }
                 }
 
